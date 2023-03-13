@@ -4,6 +4,8 @@ import { Preferences } from '@capacitor/preferences'
 import { useEffect, useState } from "react";
 import { nanoid } from 'nanoid'
 import { UserPhoto } from "../interfaces/UserPhoto";
+import { isPlatform } from "@ionic/core";
+import { Capacitor } from "@capacitor/core";
 
 const PHOTO_STORAGE = "photos";
 
@@ -27,14 +29,20 @@ const base64FromPath = async (path: string): Promise<string> => {
 }
 
 const savePhoto = async (photo: Photo): Promise<UserPhoto> => {
-  if (typeof photo.webPath !== 'string') {
-    throw new Error('Photo webPath is not a string')
-  }
-
   const id = nanoid()
   const fileName = id + ".jpeg";
-  const base64Data = await base64FromPath(photo.webPath)
-  await Filesystem.writeFile({
+
+  let base64Data: string
+  if (isPlatform('hybrid')) {
+    const file = await Filesystem.readFile({
+      path: photo.path!
+    })
+    base64Data = file.data
+  } else {
+    base64Data = await base64FromPath(photo.webPath!)
+  }
+
+  const savedFile = await Filesystem.writeFile({
     path: fileName,
     data: base64Data,
     directory: Directory.Data,
@@ -42,8 +50,8 @@ const savePhoto = async (photo: Photo): Promise<UserPhoto> => {
 
   return {
     id,
-    fileName,
-    webviewPath: photo.webPath,
+    filePath: isPlatform('hybrid') ? savedFile.uri : fileName,
+    webviewPath: isPlatform('hybrid') ? Capacitor.convertFileSrc(savedFile.uri) : photo.webPath,
   }
 }
 
@@ -55,9 +63,14 @@ const loadSavedPhotos = async (): Promise<UserPhoto[]> => {
   }
 
   const photos = JSON.parse(value) as UserPhoto[]
+  
+  if (isPlatform('hybrid')) {
+    return photos
+  }
+
   const loadedPhotos = photos.map(async (photo) => {
     const file = await Filesystem.readFile({
-      path: photo.fileName,
+      path: photo.filePath,
       directory: Directory.Data,
     })
     return {

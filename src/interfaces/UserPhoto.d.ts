@@ -1,5 +1,5 @@
 export interface UserPhoto {
     id: string;
-    fileName: string;
+    filePath: string;
     webviewPath?: string;
 }
