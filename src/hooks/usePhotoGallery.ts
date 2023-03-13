@@ -63,7 +63,7 @@ const loadSavedPhotos = async (): Promise<UserPhoto[]> => {
   }
 
   const photos = JSON.parse(value) as UserPhoto[]
-  
+
   if (isPlatform('hybrid')) {
     return photos
   }
@@ -105,5 +105,20 @@ export const usePhotoGallery = () => {
     })
   };
 
-  return { photos, takePhoto };
+  const deletePhoto = async (photo: UserPhoto) => {
+    const filename = photo.filePath.substr(photo.filePath.lastIndexOf('/') + 1)
+    await Filesystem.deleteFile({
+      path: filename,
+      directory: Directory.Data
+    })
+
+    const updatedPhotos = photos.filter(p => p.id !== photo.id)
+    Preferences.set({
+      key: PHOTO_STORAGE,
+      value: JSON.stringify(updatedPhotos)
+    })
+    setPhotos(updatedPhotos)
+  }
+
+  return { photos, takePhoto, deletePhoto };
 };
