@@ -1,8 +1,11 @@
 import { Camera, CameraResultType, CameraSource, Photo } from "@capacitor/camera";
 import { Directory, Filesystem } from '@capacitor/filesystem';
-import { useState } from "react";
+import { Preferences } from '@capacitor/preferences'
+import { useEffect, useState } from "react";
 import { nanoid } from 'nanoid'
 import { UserPhoto } from "../interfaces/UserPhoto";
+
+const PHOTO_STORAGE = "photos";
 
 const base64FromPath = async (path: string): Promise<string> => {
   const response = await fetch(path);
@@ -44,8 +47,34 @@ const savePhoto = async (photo: Photo): Promise<UserPhoto> => {
   }
 }
 
+const loadSavedPhotos = async (): Promise<UserPhoto[]> => {
+  const { value } = await Preferences.get({ key: PHOTO_STORAGE })
+
+  if (!value) {
+    return []
+  }
+
+  const photos = JSON.parse(value) as UserPhoto[]
+  const loadedPhotos = photos.map(async (photo) => {
+    const file = await Filesystem.readFile({
+      path: photo.fileName,
+      directory: Directory.Data,
+    })
+    return {
+      ...photo,
+      webviewPath: `data:image/jpeg;base64,${file.data}`
+    }
+  })
+
+  return Promise.all(loadedPhotos)
+}
+
 export const usePhotoGallery = () => {
   const [photos, setPhotos] = useState<UserPhoto[]>([]);
+
+  useEffect(() => {
+    loadSavedPhotos().then(setPhotos)
+  }, [])
 
   const takePhoto = async () => {
     const photo = await Camera.getPhoto({
@@ -53,10 +82,14 @@ export const usePhotoGallery = () => {
       source: CameraSource.Camera,
       quality: 100,
     });
-
     const savedPhoto = await savePhoto(photo);
 
-    setPhotos([savedPhoto, ...photos]);
+    const newPhotos = [savedPhoto, ...photos];
+    setPhotos(newPhotos);
+    Preferences.set({
+      key: PHOTO_STORAGE,
+      value: JSON.stringify(newPhotos)
+    })
   };
 
   return { photos, takePhoto };
