@@ -7,14 +7,17 @@ import {
   IonToolbar,
   IonFabButton,
   IonIcon,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonImg,
 } from "@ionic/react";
 import { camera } from "ionicons/icons";
+import { usePhotoGallery } from "../hooks/usePhotoGallery";
 import "./PhotosTab.css";
 
 const PhotosTab: React.FC = () => {
-  const takePhoto = () => {
-    console.log("Taking photo");
-  };
+  const { photos, takePhoto } = usePhotoGallery();
 
   return (
     <IonPage>
@@ -29,6 +32,16 @@ const PhotosTab: React.FC = () => {
             <IonTitle size="large">Photo Gallery</IonTitle>
           </IonToolbar>
         </IonHeader>
+
+        <IonGrid>
+          <IonRow>
+            {photos.map((photo) => (
+                <IonCol size="6" key={photo.id}>
+                  <IonImg src={photo.webviewPath} />
+                </IonCol>
+              ))}
+          </IonRow>
+        </IonGrid>
 
         <IonFab vertical="bottom" horizontal="center" slot="fixed">
           <IonFabButton onClick={takePhoto}>
